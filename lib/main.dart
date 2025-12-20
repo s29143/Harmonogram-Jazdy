@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:harmonogram/notifiers/z_notifier.dart';
 import 'package:harmonogram/pages/home_screen.dart';
 import 'package:harmonogram/pages/lines_screen.dart';
+import 'package:harmonogram/pages/services_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
@@ -28,6 +29,10 @@ final _router = GoRouter(
   routes: [
     GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
     GoRoute(path: '/lines', builder: (context, state) => const LinesScreen()),
+    GoRoute(
+      path: '/services',
+      builder: (context, state) => const ServicesScreen(),
+    ),
   ],
 );
 

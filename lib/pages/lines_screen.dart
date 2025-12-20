@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:harmonogram/main.dart';
 import 'package:go_router/go_router.dart';
-import 'package:harmonogram/models/Lines_store.dart';
+import 'package:harmonogram/models/lines_store.dart';
 import 'package:harmonogram/models/bus_line.dart';
 import 'package:harmonogram/notifiers/lines_notifier.dart';
 
@@ -56,7 +56,6 @@ class LinesScreen extends ConsumerWidget {
                 final line = linesForZ[index];
                 return ListTile(
                   title: Text('Linia ${line.number}'),
-                  subtitle: Text('Przystanków: ${line.stopsCount}'),
                   trailing: IconButton(
                     icon: const Icon(Icons.delete_outline),
                     onPressed: () {
@@ -64,6 +63,8 @@ class LinesScreen extends ConsumerWidget {
                     },
                   ),
                   onTap: () {
+                    ref.read(linesProvider.notifier).selectLine(line.id);
+                    context.go('/services');
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Wybrano linię ${line.number}')),
                     );
@@ -80,7 +81,6 @@ class LinesScreen extends ConsumerWidget {
     String z,
   ) async {
     final numberCtrl = TextEditingController();
-    final stopsCtrl = TextEditingController(text: '10');
 
     final result = await showDialog<bool>(
       context: context,
@@ -95,14 +95,6 @@ class LinesScreen extends ConsumerWidget {
                 keyboardType: TextInputType.text,
                 decoration: const InputDecoration(
                   labelText: 'Numer linii (np. 101)',
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: stopsCtrl,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Liczba przystanków',
                 ),
               ),
             ],
@@ -124,17 +116,14 @@ class LinesScreen extends ConsumerWidget {
     if (result != true) return;
 
     final number = numberCtrl.text.trim();
-    final stops = int.tryParse(stopsCtrl.text.trim());
 
-    if (number.isEmpty || stops == null || stops <= 0) {
+    if (number.isEmpty) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Niepoprawne dane')));
       return;
     }
 
-    await ref
-        .read(linesProvider.notifier)
-        .addLine(z: z, number: number, stopsCount: stops);
+    await ref.read(linesProvider.notifier).addLine(z: z, number: number);
   }
 }
