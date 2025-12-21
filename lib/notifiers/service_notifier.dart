@@ -3,94 +3,80 @@ import 'package:harmonogram/models/stop.dart';
 
 class ServiceState {
   final List<Stop> stops;
-  final Map<int, List<int>> minutesByHour;
 
-  const ServiceState({required this.stops, required this.minutesByHour});
+  final Map<String, Map<int, List<int>>> minutesByStop;
+
+  const ServiceState({required this.stops, required this.minutesByStop});
+
+  factory ServiceState.initial() =>
+      const ServiceState(stops: [], minutesByStop: {});
 
   ServiceState copyWith({
     List<Stop>? stops,
-    Map<int, List<int>>? minutesByHour,
+    Map<String, Map<int, List<int>>>? minutesByStop,
   }) {
     return ServiceState(
       stops: stops ?? this.stops,
-      minutesByHour: minutesByHour ?? this.minutesByHour,
+      minutesByStop: minutesByStop ?? this.minutesByStop,
     );
-  }
-
-  factory ServiceState.initial() {
-    final map = <int, List<int>>{};
-    for (var h = 4; h <= 23; h++) {
-      map[h] = <int>[];
-    }
-    return ServiceState(stops: const [], minutesByHour: map);
   }
 }
 
 final serviceProvider =
     StateNotifierProvider.family<ServiceNotifier, ServiceState, String>(
-      (ref, lineId) => ServiceNotifier()..ensureSeed(),
+      (ref, lineId) => ServiceNotifier(),
     );
 
 class ServiceNotifier extends StateNotifier<ServiceState> {
   ServiceNotifier() : super(ServiceState.initial());
 
-  void ensureSeed() {
-    if (state.stops.isNotEmpty) return;
-
-    // Opcjonalne dane startowe, żeby od razu coś było widać
-    state = state.copyWith(
-      stops: const [
-        Stop(id: 's1', name: 'Pętla'),
-        Stop(id: 's2', name: 'Centrum'),
-        Stop(id: 's3', name: 'Dworzec'),
-      ],
-    );
-
-    // przykładowe minuty w wybranych godzinach
-    addMinute(6, 5);
-    addMinute(6, 25);
-    addMinute(6, 45);
-    addMinute(14, 10);
-    addMinute(14, 40);
+  Map<int, List<int>> _emptyHours() {
+    final map = <int, List<int>>{};
+    for (var h = 4; h <= 23; h++) {
+      map[h] = <int>[];
+    }
+    return map;
   }
 
   void addStop(String name) {
     final id = DateTime.now().microsecondsSinceEpoch.toString();
+    final stop = Stop(id: id, name: name);
+
+    final nextMap = Map<String, Map<int, List<int>>>.from(state.minutesByStop);
+    nextMap[stop.id] = _emptyHours();
+
     state = state.copyWith(
-      stops: [
-        ...state.stops,
-        Stop(id: id, name: name),
-      ],
+      stops: [...state.stops, stop],
+      minutesByStop: nextMap,
     );
   }
 
   void removeStop(String stopId) {
-    state = state.copyWith(
-      stops: state.stops.where((s) => s.id != stopId).toList(),
-    );
+    final nextStops = state.stops.where((s) => s.id != stopId).toList();
+    final nextMap = Map<String, Map<int, List<int>>>.from(state.minutesByStop);
+    nextMap.remove(stopId);
+
+    state = state.copyWith(stops: nextStops, minutesByStop: nextMap);
   }
 
-  /// Dodaje minutę do danej godziny, trzyma posortowane i bez duplikatów.
-  void addMinute(int hour, int minute) {
+  List<int> minutesFor(String stopId, int hour) {
+    return state.minutesByStop[stopId]?[hour] ?? const <int>[];
+  }
+
+  void setMinutes(String stopId, int hour, List<int> minutes) {
     if (hour < 4 || hour > 23) return;
-    if (minute < 0 || minute > 59) return;
 
-    final current = [...(state.minutesByHour[hour] ?? const <int>[])];
-    if (current.contains(minute)) return;
-    current.add(minute);
-    current.sort();
+    final cleaned = minutes.where((m) => m >= 0 && m <= 59).toSet().toList()
+      ..sort();
 
-    final copy = Map<int, List<int>>.from(state.minutesByHour);
-    copy[hour] = current;
-    state = state.copyWith(minutesByHour: copy);
-  }
+    final nextMap = Map<String, Map<int, List<int>>>.from(state.minutesByStop);
+    final stopHours = Map<int, List<int>>.from(
+      nextMap[stopId] ?? _emptyHours(),
+    );
 
-  void removeMinute(int hour, int minute) {
-    final current = [...(state.minutesByHour[hour] ?? const <int>[])];
-    current.remove(minute);
+    stopHours[hour] = cleaned;
+    nextMap[stopId] = stopHours;
 
-    final copy = Map<int, List<int>>.from(state.minutesByHour);
-    copy[hour] = current;
-    state = state.copyWith(minutesByHour: copy);
+    state = state.copyWith(minutesByStop: nextMap);
   }
 }

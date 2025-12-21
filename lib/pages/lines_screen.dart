@@ -117,7 +117,7 @@ class LinesScreen extends ConsumerWidget {
 
     final number = numberCtrl.text.trim();
 
-    if (number.isEmpty) {
+    if (number.isEmpty && context.mounted) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Niepoprawne dane')));
