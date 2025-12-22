@@ -5,6 +5,7 @@ import 'package:harmonogram/stores/lines_store.dart';
 
 class LinesNotifier extends Notifier<List<BusLine>> {
   late final LinesStore store;
+  bool get isEditing => store.isEditing;
 
   @override
   List<BusLine> build() {
@@ -57,5 +58,9 @@ class LinesNotifier extends Notifier<List<BusLine>> {
 
   Future<void> clearSelectedLine() async {
     await store.clearSelectedLine();
+  }
+
+  void setEditing(bool editing) {
+    store.setEditing(editing);
   }
 }

@@ -6,6 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 class LinesStore {
   static const _linesKey = 'lines';
   static const _selectedLineKey = 'selected_line_id';
+  bool _isEditing = false;
+  bool get isEditing => _isEditing;
 
   final SharedPreferences prefs;
 
@@ -39,5 +41,9 @@ class LinesStore {
 
   Future<void> clearSelectedLine() async {
     await prefs.remove(_selectedLineKey);
+  }
+
+  void setEditing(bool editing) {
+    _isEditing = editing;
   }
 }

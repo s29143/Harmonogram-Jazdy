@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:harmonogram/components/cell.dart';
+import 'package:harmonogram/models/bus_line.dart';
 import 'package:harmonogram/models/stop.dart';
+import 'package:harmonogram/pages/lines_screen.dart';
+import 'package:harmonogram/pages/services_screen.dart';
 
-class StopsScheduleGrid extends StatefulWidget {
+class StopsScheduleGrid extends ConsumerStatefulWidget {
   final List<Stop> stops;
   final Map<String, Map<int, int?>> minutesByStop;
   final void Function(String stopId, int hour) onEditCell;
@@ -29,10 +33,10 @@ class StopsScheduleGrid extends StatefulWidget {
   static const double rowHeight = 72;
 
   @override
-  State<StopsScheduleGrid> createState() => _StopsScheduleGridState();
+  ConsumerState<StopsScheduleGrid> createState() => _StopsScheduleGridState();
 }
 
-class _StopsScheduleGridState extends State<StopsScheduleGrid> {
+class _StopsScheduleGridState extends ConsumerState<StopsScheduleGrid> {
   late final ScrollController _hCtrl;
   late final ScrollController _vGridCtrl;
   late final ScrollController _vStickyCtrl;
@@ -71,6 +75,8 @@ class _StopsScheduleGridState extends State<StopsScheduleGrid> {
     final hours = List<int>.generate(20, (i) => i + 4);
     final gridWidth = hours.length * StopsScheduleGrid.cellWidth;
     final totalWidth = StopsScheduleGrid.stopNameWidth + gridWidth;
+    final linesNotifier = ref.read(linesProvider.notifier);
+    final BusLine line = linesNotifier.selectedLine!;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -164,15 +170,29 @@ class _StopsScheduleGridState extends State<StopsScheduleGrid> {
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         child: Align(
                           alignment: Alignment.centerLeft,
-                          child: Text(
-                            'Przystanek',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: Theme.of(
-                                context,
-                              ).textTheme.bodyMedium?.color,
-                            ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Przystanek',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: Theme.of(
+                                      context,
+                                    ).textTheme.bodyMedium?.color,
+                                  ),
+                                ),
+                              ),
+                              ref.watch(linesProvider.notifier).isEditing
+                                  ? IconButton(
+                                      icon: const Icon(Icons.add),
+                                      tooltip: 'Dodaj przystanek',
+                                      onPressed: () =>
+                                          _showAddStopDialog(context, line.id),
+                                    )
+                                  : const SizedBox.shrink(),
+                            ],
                           ),
                         ),
                       ),
@@ -186,7 +206,7 @@ class _StopsScheduleGridState extends State<StopsScheduleGrid> {
                               controller: _vStickyCtrl,
                               physics: const NeverScrollableScrollPhysics(),
                               itemCount: widget.stops.length,
-                              separatorBuilder: (_, __) =>
+                              separatorBuilder: (_, _) =>
                                   const Divider(height: 1),
                               itemBuilder: (context, i) {
                                 final stop = widget.stops[i];
@@ -198,13 +218,35 @@ class _StopsScheduleGridState extends State<StopsScheduleGrid> {
                                     ),
                                     child: Align(
                                       alignment: Alignment.centerLeft,
-                                      child: Text(
-                                        stop.name,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                        ),
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              stop.name,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                          ref
+                                                  .watch(linesProvider.notifier)
+                                                  .isEditing
+                                              ? IconButton(
+                                                  icon: const Icon(
+                                                    Icons.delete_outline,
+                                                  ),
+                                                  onPressed: () => ref
+                                                      .read(
+                                                        serviceProvider(
+                                                          line.id,
+                                                        ).notifier,
+                                                      )
+                                                      .removeStop(stop.id),
+                                                )
+                                              : const SizedBox.shrink(),
+                                        ],
                                       ),
                                     ),
                                   ),
@@ -250,5 +292,41 @@ class _StopsScheduleGridState extends State<StopsScheduleGrid> {
       highlight: highlight,
       onEdit: () => widget.onEditCell(stopId, hour),
     );
+  }
+
+  Future<void> _showAddStopDialog(BuildContext context, String lineId) async {
+    final ctrl = TextEditingController();
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Dodaj przystanek'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Nazwa przystanku',
+            hintText: 'np. Dworzec',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Anuluj'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Dodaj'),
+          ),
+        ],
+      ),
+    );
+
+    if (ok != true) return;
+
+    final name = ctrl.text.trim();
+    if (name.isEmpty) return;
+
+    await ref.read(serviceProvider(lineId).notifier).addStop(name);
   }
 }

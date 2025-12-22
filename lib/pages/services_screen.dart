@@ -3,10 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:harmonogram/components/now_bar.dart';
 import 'package:harmonogram/models/next_stop_time.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
-import 'package:harmonogram/components/stops_panel.dart';
 import 'package:harmonogram/components/stops_schedule_grid.dart';
 import 'package:harmonogram/models/bus_line.dart';
 import 'package:harmonogram/notifiers/service_notifier.dart';
@@ -68,23 +68,26 @@ class _ServicesScreenState extends ConsumerState<ServicesScreen> {
           onPressed: () => context.go('/lines'),
         ),
       ),
+      floatingActionButton: FloatingActionButton(
+        child: Icon(
+          Icons.draw,
+          color: ref.watch(linesProvider.notifier).isEditing
+              ? Colors.red
+              : Colors.white,
+        ),
+        onPressed: () {
+          ref
+              .watch(linesProvider.notifier)
+              .setEditing(!ref.watch(linesProvider.notifier).isEditing);
+        },
+      ),
       body: Row(
         children: [
-          SizedBox(
-            width: 240,
-            child: StopsPanel(
-              stops: state.stops,
-              onAdd: () => _showAddStopDialog(context, line.id),
-              onRemove: (stopId) => ref
-                  .read(serviceProvider(line.id).notifier)
-                  .removeStop(stopId),
-            ),
-          ),
           const VerticalDivider(width: 1),
           Expanded(
             child: Column(
               children: [
-                _NowBar(now: _now),
+                NowBar(now: _now),
                 const Divider(height: 1),
                 Expanded(
                   child: StopsScheduleGrid(
@@ -151,7 +154,6 @@ class _ServicesScreenState extends ConsumerState<ServicesScreen> {
 
     final int? minute = (ctrl.text.trim().isEmpty) ? null : parsed;
 
-    // Walidacja
     if (context.mounted && minute != null && (minute < 0 || minute > 59)) {
       ScaffoldMessenger.of(
         context,
@@ -162,76 +164,5 @@ class _ServicesScreenState extends ConsumerState<ServicesScreen> {
     await ref
         .read(serviceProvider(lineId).notifier)
         .setMinutes(stopId, hour, minute);
-  }
-
-  Future<void> _showAddStopDialog(BuildContext context, String lineId) async {
-    final ctrl = TextEditingController();
-
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Dodaj przystanek'),
-        content: TextField(
-          controller: ctrl,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Nazwa przystanku',
-            hintText: 'np. Dworzec',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Anuluj'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Dodaj'),
-          ),
-        ],
-      ),
-    );
-
-    if (ok != true) return;
-
-    final name = ctrl.text.trim();
-    if (name.isEmpty) return;
-
-    await ref.read(serviceProvider(lineId).notifier).addStop(name);
-  }
-}
-
-class _NowBar extends StatelessWidget {
-  final DateTime now;
-  const _NowBar({required this.now});
-
-  @override
-  Widget build(BuildContext context) {
-    String two(int v) => v.toString().padLeft(2, '0');
-    final text = '${two(now.hour)}:${two(now.minute)}:${two(now.second)}';
-
-    return SizedBox(
-      height: 48,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Row(
-          children: [
-            const Text(
-              'Czas:',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              text,
-              style: const TextStyle(
-                fontSize: 20,
-                fontFeatures: [FontFeature.tabularFigures()],
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
