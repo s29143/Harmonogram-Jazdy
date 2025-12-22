@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:harmonogram/models/next_stop_time.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'package:harmonogram/components/stops_panel.dart';
@@ -22,14 +25,20 @@ class ServicesScreen extends ConsumerStatefulWidget {
 }
 
 class _ServicesScreenState extends ConsumerState<ServicesScreen> {
+  Timer? _clockTimer;
+  DateTime _now = DateTime.now();
   @override
   void initState() {
     super.initState();
     WakelockPlus.enable();
+    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      setState(() => _now = DateTime.now());
+    });
   }
 
   @override
   void dispose() {
+    _clockTimer?.cancel();
     WakelockPlus.disable();
     super.dispose();
   }
@@ -49,6 +58,7 @@ class _ServicesScreenState extends ConsumerState<ServicesScreen> {
     }
 
     final state = ref.watch(serviceProvider(line.id));
+    final next = NextStopTime.findNext(_now, state.minutesByStop);
 
     return Scaffold(
       appBar: AppBar(
@@ -72,13 +82,25 @@ class _ServicesScreenState extends ConsumerState<ServicesScreen> {
           ),
           const VerticalDivider(width: 1),
           Expanded(
-            child: StopsScheduleGrid(
-              stops: state.stops,
-              minutesByStop: state.minutesByStop,
-              onEditCell: (stopId, hour) {
-                final current = state.minutesByStop[stopId]?[hour];
-                _editCellDialog(context, line.id, stopId, hour, current);
-              },
+            child: Column(
+              children: [
+                _NowBar(now: _now),
+                const Divider(height: 1),
+                Expanded(
+                  child: StopsScheduleGrid(
+                    now: _now,
+                    stops: state.stops,
+                    highlightedStopId: next?.stopId,
+                    highlightedHour: next?.hour,
+                    highlightedMinute: next?.minute,
+                    minutesByStop: state.minutesByStop,
+                    onEditCell: (stopId, hour) {
+                      final current = state.minutesByStop[stopId]?[hour];
+                      _editCellDialog(context, line.id, stopId, hour, current);
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -176,5 +198,40 @@ class _ServicesScreenState extends ConsumerState<ServicesScreen> {
     if (name.isEmpty) return;
 
     await ref.read(serviceProvider(lineId).notifier).addStop(name);
+  }
+}
+
+class _NowBar extends StatelessWidget {
+  final DateTime now;
+  const _NowBar({required this.now});
+
+  @override
+  Widget build(BuildContext context) {
+    String two(int v) => v.toString().padLeft(2, '0');
+    final text = '${two(now.hour)}:${two(now.minute)}:${two(now.second)}';
+
+    return SizedBox(
+      height: 48,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Row(
+          children: [
+            const Text(
+              'Czas:',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              text,
+              style: const TextStyle(
+                fontSize: 20,
+                fontFeatures: [FontFeature.tabularFigures()],
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

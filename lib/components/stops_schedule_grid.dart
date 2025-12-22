@@ -6,12 +6,20 @@ class StopsScheduleGrid extends StatelessWidget {
   final List<Stop> stops;
   final Map<String, Map<int, int?>> minutesByStop;
   final void Function(String stopId, int hour) onEditCell;
+  final DateTime now;
+  final String? highlightedStopId;
+  final int? highlightedHour;
+  final int? highlightedMinute;
 
   const StopsScheduleGrid({
     super.key,
+    required this.now,
     required this.stops,
     required this.minutesByStop,
     required this.onEditCell,
+    this.highlightedStopId,
+    this.highlightedHour,
+    this.highlightedMinute,
   });
 
   static const double stopNameWidth = 160;
@@ -23,7 +31,6 @@ class StopsScheduleGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final hours = List<int>.generate(20, (i) => i + 4);
     final totalWidth = stopNameWidth + (hours.length * cellWidth);
-
     return Scrollbar(
       thumbVisibility: true,
       child: SingleChildScrollView(
@@ -43,9 +50,12 @@ class StopsScheduleGrid extends StatelessWidget {
                         child: Center(
                           child: Text(
                             h.toString().padLeft(2, '0'),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
+                              color: highlightedHour == h
+                                  ? Colors.red
+                                  : (h < now.hour ? Colors.grey : null),
                             ),
                           ),
                         ),
@@ -87,12 +97,7 @@ class StopsScheduleGrid extends StatelessWidget {
                                     ),
                                   ),
                                 ),
-                                for (final h in hours)
-                                  Cell(
-                                    width: cellWidth,
-                                    minutes: minutesByStop[stop.id]?[h],
-                                    onEdit: () => onEditCell(stop.id, h),
-                                  ),
+                                for (final h in hours) _buildCell(stop.id, h),
                               ],
                             ),
                           );
@@ -103,6 +108,27 @@ class StopsScheduleGrid extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildCell(String stopId, int hour) {
+    final minute = minutesByStop[stopId]?[hour];
+
+    final highlight =
+        highlightedStopId == stopId &&
+        highlightedHour == hour &&
+        highlightedMinute == minute;
+
+    final dimmed =
+        (hour < now.hour) ||
+        (hour == now.hour && minute != null && minute < now.minute);
+
+    return Cell(
+      width: cellWidth,
+      minutes: minute,
+      dimmed: dimmed,
+      highlight: highlight,
+      onEdit: () => onEditCell(stopId, hour),
     );
   }
 }
