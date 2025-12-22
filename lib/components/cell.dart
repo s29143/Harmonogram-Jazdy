@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class Cell extends StatelessWidget {
   final double width;
-  final List<int> minutes;
+  final int? minutes;
   final VoidCallback onEdit;
 
   const Cell({
@@ -14,9 +14,7 @@ class Cell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = minutes.isEmpty
-        ? '—'
-        : minutes.map((m) => m.toString().padLeft(2, '0')).join(' ');
+    final text = minutes == null ? '-' : minutes.toString().padLeft(2, '0');
 
     return SizedBox(
       width: width,

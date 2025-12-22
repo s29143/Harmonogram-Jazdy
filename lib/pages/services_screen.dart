@@ -46,8 +46,7 @@ class ServicesScreen extends ConsumerWidget {
               stops: state.stops,
               minutesByStop: state.minutesByStop,
               onEditCell: (stopId, hour) {
-                final current =
-                    state.minutesByStop[stopId]?[hour] ?? const <int>[];
+                final current = state.minutesByStop[stopId]?[hour];
                 _editCellDialog(context, ref, line.id, stopId, hour, current);
               },
             ),
@@ -63,11 +62,13 @@ class ServicesScreen extends ConsumerWidget {
     String lineId,
     String stopId,
     int hour,
-    List<int> current,
+    int? current,
   ) async {
     final ctrl = TextEditingController(
-      text: current.map((m) => m.toString().padLeft(2, '0')).join(' '),
+      text: current != null ? current.toString() : '',
     );
+
+    debugPrint('Current minutes: $current');
 
     final ok = await showDialog<bool>(
       context: context,
@@ -78,7 +79,7 @@ class ServicesScreen extends ConsumerWidget {
           autofocus: true,
           decoration: const InputDecoration(
             labelText: 'Minuty',
-            hintText: 'np. 03 05 08 lub 3,5,8',
+            hintText: 'np. 05',
           ),
         ),
         actions: [
@@ -96,37 +97,11 @@ class ServicesScreen extends ConsumerWidget {
 
     if (ok != true) return;
 
-    final minutes = _parseMinutes(ctrl.text);
-
-    if (minutes == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Niepoprawny format (0–59)')),
-      );
-      return;
-    }
+    final minutes = ctrl.text;
 
     ref
         .read(serviceProvider(lineId).notifier)
-        .setMinutes(stopId, hour, minutes);
-  }
-
-  List<int>? _parseMinutes(String input) {
-    final trimmed = input.trim();
-    if (trimmed.isEmpty) return <int>[];
-
-    // separator: spacja, przecinek, średnik, dwukropek, tab
-    final parts = trimmed.split(RegExp(r'[\s,;:]+')).where((p) => p.isNotEmpty);
-
-    final out = <int>[];
-    for (final p in parts) {
-      final v = int.tryParse(p);
-      if (v == null || v < 0 || v > 59) return null;
-      out.add(v);
-    }
-
-    // unikat + sort
-    final unique = out.toSet().toList()..sort();
-    return unique;
+        .setMinutes(stopId, hour, int.tryParse(minutes) ?? 0);
   }
 
   Future<void> _showAddStopDialog(

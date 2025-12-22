@@ -4,7 +4,7 @@ import 'package:harmonogram/models/stop.dart';
 
 class StopsScheduleGrid extends StatelessWidget {
   final List<Stop> stops;
-  final Map<String, Map<int, List<int>>> minutesByStop;
+  final Map<String, Map<int, int?>> minutesByStop;
   final void Function(String stopId, int hour) onEditCell;
 
   const StopsScheduleGrid({
@@ -90,9 +90,7 @@ class StopsScheduleGrid extends StatelessWidget {
                                 for (final h in hours)
                                   Cell(
                                     width: cellWidth,
-                                    minutes:
-                                        minutesByStop[stop.id]?[h] ??
-                                        const <int>[],
+                                    minutes: minutesByStop[stop.id]?[h],
                                     onEdit: () => onEditCell(stop.id, h),
                                   ),
                               ],

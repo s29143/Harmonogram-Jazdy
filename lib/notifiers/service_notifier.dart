@@ -4,7 +4,7 @@ import 'package:harmonogram/models/stop.dart';
 class ServiceState {
   final List<Stop> stops;
 
-  final Map<String, Map<int, List<int>>> minutesByStop;
+  final Map<String, Map<int, int?>> minutesByStop;
 
   const ServiceState({required this.stops, required this.minutesByStop});
 
@@ -13,7 +13,7 @@ class ServiceState {
 
   ServiceState copyWith({
     List<Stop>? stops,
-    Map<String, Map<int, List<int>>>? minutesByStop,
+    Map<String, Map<int, int?>>? minutesByStop,
   }) {
     return ServiceState(
       stops: stops ?? this.stops,
@@ -30,10 +30,10 @@ final serviceProvider =
 class ServiceNotifier extends StateNotifier<ServiceState> {
   ServiceNotifier() : super(ServiceState.initial());
 
-  Map<int, List<int>> _emptyHours() {
-    final map = <int, List<int>>{};
+  Map<int, int?> _emptyHours() {
+    final map = <int, int?>{};
     for (var h = 4; h <= 23; h++) {
-      map[h] = <int>[];
+      map[h] = null;
     }
     return map;
   }
@@ -42,7 +42,7 @@ class ServiceNotifier extends StateNotifier<ServiceState> {
     final id = DateTime.now().microsecondsSinceEpoch.toString();
     final stop = Stop(id: id, name: name);
 
-    final nextMap = Map<String, Map<int, List<int>>>.from(state.minutesByStop);
+    final nextMap = Map<String, Map<int, int?>>.from(state.minutesByStop);
     nextMap[stop.id] = _emptyHours();
 
     state = state.copyWith(
@@ -53,28 +53,23 @@ class ServiceNotifier extends StateNotifier<ServiceState> {
 
   void removeStop(String stopId) {
     final nextStops = state.stops.where((s) => s.id != stopId).toList();
-    final nextMap = Map<String, Map<int, List<int>>>.from(state.minutesByStop);
+    final nextMap = Map<String, Map<int, int>>.from(state.minutesByStop);
     nextMap.remove(stopId);
 
     state = state.copyWith(stops: nextStops, minutesByStop: nextMap);
   }
 
-  List<int> minutesFor(String stopId, int hour) {
-    return state.minutesByStop[stopId]?[hour] ?? const <int>[];
+  int? minutesFor(String stopId, int hour) {
+    return state.minutesByStop[stopId]?[hour];
   }
 
-  void setMinutes(String stopId, int hour, List<int> minutes) {
+  void setMinutes(String stopId, int hour, int minutes) {
     if (hour < 4 || hour > 23) return;
 
-    final cleaned = minutes.where((m) => m >= 0 && m <= 59).toSet().toList()
-      ..sort();
+    final nextMap = Map<String, Map<int, int?>>.from(state.minutesByStop);
+    final stopHours = Map<int, int?>.from(nextMap[stopId] ?? _emptyHours());
 
-    final nextMap = Map<String, Map<int, List<int>>>.from(state.minutesByStop);
-    final stopHours = Map<int, List<int>>.from(
-      nextMap[stopId] ?? _emptyHours(),
-    );
-
-    stopHours[hour] = cleaned;
+    stopHours[hour] = minutes;
     nextMap[stopId] = stopHours;
 
     state = state.copyWith(minutesByStop: nextMap);
