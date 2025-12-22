@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
+
 import 'package:harmonogram/components/stops_panel.dart';
 import 'package:harmonogram/components/stops_schedule_grid.dart';
 import 'package:harmonogram/models/bus_line.dart';
@@ -12,11 +14,28 @@ final serviceProvider =
       ServiceNotifier.new,
     );
 
-class ServicesScreen extends ConsumerWidget {
+class ServicesScreen extends ConsumerStatefulWidget {
   const ServicesScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ServicesScreen> createState() => _ServicesScreenState();
+}
+
+class _ServicesScreenState extends ConsumerState<ServicesScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WakelockPlus.enable();
+  }
+
+  @override
+  void dispose() {
+    WakelockPlus.disable();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final linesNotifier = ref.read(linesProvider.notifier);
     final BusLine? line = linesNotifier.selectedLine;
 
@@ -45,7 +64,7 @@ class ServicesScreen extends ConsumerWidget {
             width: 240,
             child: StopsPanel(
               stops: state.stops,
-              onAdd: () => _showAddStopDialog(context, ref, line.id),
+              onAdd: () => _showAddStopDialog(context, line.id),
               onRemove: (stopId) => ref
                   .read(serviceProvider(line.id).notifier)
                   .removeStop(stopId),
@@ -58,7 +77,7 @@ class ServicesScreen extends ConsumerWidget {
               minutesByStop: state.minutesByStop,
               onEditCell: (stopId, hour) {
                 final current = state.minutesByStop[stopId]?[hour];
-                _editCellDialog(context, ref, line.id, stopId, hour, current);
+                _editCellDialog(context, line.id, stopId, hour, current);
               },
             ),
           ),
@@ -69,7 +88,6 @@ class ServicesScreen extends ConsumerWidget {
 
   Future<void> _editCellDialog(
     BuildContext context,
-    WidgetRef ref,
     String lineId,
     String stopId,
     int hour,
@@ -86,6 +104,7 @@ class ServicesScreen extends ConsumerWidget {
         content: TextField(
           controller: ctrl,
           autofocus: true,
+          keyboardType: TextInputType.number,
           decoration: const InputDecoration(
             labelText: 'Minuty',
             hintText: 'np. 05',
@@ -106,18 +125,24 @@ class ServicesScreen extends ConsumerWidget {
 
     if (ok != true) return;
 
-    final minutes = ctrl.text;
+    final parsed = int.tryParse(ctrl.text.trim());
 
-    ref
+    final int? minute = (ctrl.text.trim().isEmpty) ? null : parsed;
+
+    // Walidacja
+    if (context.mounted && minute != null && (minute < 0 || minute > 59)) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Podaj minutę 0–59')));
+      return;
+    }
+
+    await ref
         .read(serviceProvider(lineId).notifier)
-        .setMinutes(stopId, hour, int.tryParse(minutes) ?? 0);
+        .setMinutes(stopId, hour, minute);
   }
 
-  Future<void> _showAddStopDialog(
-    BuildContext context,
-    WidgetRef ref,
-    String lineId,
-  ) async {
+  Future<void> _showAddStopDialog(BuildContext context, String lineId) async {
     final ctrl = TextEditingController();
 
     final ok = await showDialog<bool>(
@@ -150,6 +175,6 @@ class ServicesScreen extends ConsumerWidget {
     final name = ctrl.text.trim();
     if (name.isEmpty) return;
 
-    ref.read(serviceProvider(lineId).notifier).addStop(name);
+    await ref.read(serviceProvider(lineId).notifier).addStop(name);
   }
 }
