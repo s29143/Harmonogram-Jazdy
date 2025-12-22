@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:harmonogram/components/cell.dart';
 import 'package:harmonogram/models/stop.dart';
 
-class StopsScheduleGrid extends StatelessWidget {
+class StopsScheduleGrid extends StatefulWidget {
   final List<Stop> stops;
   final Map<String, Map<int, int?>> minutesByStop;
   final void Function(String stopId, int hour) onEditCell;
+
   final DateTime now;
   final String? highlightedStopId;
   final int? highlightedHour;
@@ -28,58 +29,169 @@ class StopsScheduleGrid extends StatelessWidget {
   static const double rowHeight = 72;
 
   @override
+  State<StopsScheduleGrid> createState() => _StopsScheduleGridState();
+}
+
+class _StopsScheduleGridState extends State<StopsScheduleGrid> {
+  late final ScrollController _hCtrl;
+  late final ScrollController _vGridCtrl;
+  late final ScrollController _vStickyCtrl;
+
+  bool _syncing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _hCtrl = ScrollController();
+    _vGridCtrl = ScrollController();
+    _vStickyCtrl = ScrollController();
+
+    _vGridCtrl.addListener(() {
+      if (_syncing) return;
+      if (!_vStickyCtrl.hasClients) return;
+
+      _syncing = true;
+      final max = _vStickyCtrl.position.maxScrollExtent;
+      final target = _vGridCtrl.offset.clamp(0.0, max);
+      _vStickyCtrl.jumpTo(target);
+      _syncing = false;
+    });
+  }
+
+  @override
+  void dispose() {
+    _hCtrl.dispose();
+    _vGridCtrl.dispose();
+    _vStickyCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final hours = List<int>.generate(20, (i) => i + 4);
-    final totalWidth = stopNameWidth + (hours.length * cellWidth);
-    return Scrollbar(
-      thumbVisibility: true,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: SizedBox(
-          width: totalWidth,
-          child: Column(
-            children: [
-              SizedBox(
-                height: headerHeight,
-                child: Row(
-                  children: [
-                    const SizedBox(width: stopNameWidth),
-                    for (final h in hours)
+    final gridWidth = hours.length * StopsScheduleGrid.cellWidth;
+    final totalWidth = StopsScheduleGrid.stopNameWidth + gridWidth;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Stack(
+          children: [
+            Scrollbar(
+              controller: _hCtrl,
+              thumbVisibility: true,
+              child: SingleChildScrollView(
+                controller: _hCtrl,
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: totalWidth,
+                  height: constraints.maxHeight,
+                  child: Column(
+                    children: [
                       SizedBox(
-                        width: cellWidth,
-                        child: Center(
+                        height: StopsScheduleGrid.headerHeight,
+                        child: Row(
+                          children: [
+                            const SizedBox(
+                              width: StopsScheduleGrid.stopNameWidth,
+                            ),
+                            for (final h in hours)
+                              SizedBox(
+                                width: StopsScheduleGrid.cellWidth,
+                                child: Center(
+                                  child: Text(
+                                    h.toString().padLeft(2, '0'),
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                      color: (h < widget.now.hour)
+                                          ? Colors.grey
+                                          : null,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      const Divider(height: 1),
+                      Expanded(
+                        child: widget.stops.isEmpty
+                            ? const Center(child: Text('Brak przystanków'))
+                            : Scrollbar(
+                                controller: _vGridCtrl,
+                                thumbVisibility: true,
+                                child: ListView.separated(
+                                  controller: _vGridCtrl,
+                                  itemCount: widget.stops.length,
+                                  separatorBuilder: (_, __) =>
+                                      const Divider(height: 1),
+                                  itemBuilder: (context, i) {
+                                    final stop = widget.stops[i];
+                                    return SizedBox(
+                                      height: StopsScheduleGrid.rowHeight,
+                                      child: Row(
+                                        children: [
+                                          const SizedBox(
+                                            width:
+                                                StopsScheduleGrid.stopNameWidth,
+                                          ),
+                                          for (final h in hours)
+                                            _buildCell(stop.id, h),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: StopsScheduleGrid.stopNameWidth,
+              child: Material(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                child: Column(
+                  children: [
+                    SizedBox(
+                      height: StopsScheduleGrid.headerHeight,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
                           child: Text(
-                            h.toString().padLeft(2, '0'),
+                            'Przystanek',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
-                              color: highlightedHour == h
-                                  ? Colors.red
-                                  : (h < now.hour ? Colors.grey : null),
+                              color: Theme.of(
+                                context,
+                              ).textTheme.bodyMedium?.color,
                             ),
                           ),
                         ),
                       ),
-                  ],
-                ),
-              ),
-              const Divider(height: 1),
+                    ),
+                    const Divider(height: 1),
 
-              Expanded(
-                child: stops.isEmpty
-                    ? const Center(child: Text('Brak przystanków'))
-                    : ListView.separated(
-                        itemCount: stops.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1),
-                        itemBuilder: (context, i) {
-                          final stop = stops[i];
-
-                          return SizedBox(
-                            height: rowHeight,
-                            child: Row(
-                              children: [
-                                SizedBox(
-                                  width: stopNameWidth,
+                    Expanded(
+                      child: widget.stops.isEmpty
+                          ? const SizedBox.shrink()
+                          : ListView.separated(
+                              controller: _vStickyCtrl,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: widget.stops.length,
+                              separatorBuilder: (_, __) =>
+                                  const Divider(height: 1),
+                              itemBuilder: (context, i) {
+                                final stop = widget.stops[i];
+                                return SizedBox(
+                                  height: StopsScheduleGrid.rowHeight,
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 12,
@@ -96,39 +208,47 @@ class StopsScheduleGrid extends StatelessWidget {
                                       ),
                                     ),
                                   ),
-                                ),
-                                for (final h in hours) _buildCell(stop.id, h),
-                              ],
+                                );
+                              },
                             ),
-                          );
-                        },
-                      ),
+                    ),
+                  ],
+                ),
               ),
-            ],
-          ),
-        ),
-      ),
+            ),
+
+            Positioned(
+              left: StopsScheduleGrid.stopNameWidth,
+              top: 0,
+              bottom: 0,
+              child: const VerticalDivider(width: 1),
+            ),
+          ],
+        );
+      },
     );
   }
 
   Widget _buildCell(String stopId, int hour) {
-    final minute = minutesByStop[stopId]?[hour];
+    final minute = widget.minutesByStop[stopId]?[hour];
 
     final highlight =
-        highlightedStopId == stopId &&
-        highlightedHour == hour &&
-        highlightedMinute == minute;
+        widget.highlightedStopId == stopId &&
+        widget.highlightedHour == hour &&
+        widget.highlightedMinute == minute;
 
     final dimmed =
-        (hour < now.hour) ||
-        (hour == now.hour && minute != null && minute < now.minute);
+        (hour < widget.now.hour) ||
+        (hour == widget.now.hour &&
+            minute != null &&
+            minute < widget.now.minute);
 
     return Cell(
-      width: cellWidth,
+      width: StopsScheduleGrid.cellWidth,
       minutes: minute,
       dimmed: dimmed,
       highlight: highlight,
-      onEdit: () => onEditCell(stopId, hour),
+      onEdit: () => widget.onEditCell(stopId, hour),
     );
   }
 }
