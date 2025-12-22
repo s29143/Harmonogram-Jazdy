@@ -62,9 +62,6 @@ class LinesScreen extends ConsumerWidget {
                   onTap: () {
                     ref.read(linesProvider.notifier).selectLine(line.id);
                     context.go('/services');
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Wybrano linię ${line.number}')),
-                    );
                   },
                 );
               },

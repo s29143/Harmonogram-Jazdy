@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:harmonogram/main.dart';
 import 'package:harmonogram/models/stop.dart';
-import 'package:harmonogram/pages/services_screen.dart';
 import 'package:harmonogram/stores/services_store.dart';
 
 class ServiceState {

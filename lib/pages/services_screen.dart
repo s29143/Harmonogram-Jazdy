@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:harmonogram/components/stops_panel.dart';
 import 'package:harmonogram/components/stops_schedule_grid.dart';
 import 'package:harmonogram/models/bus_line.dart';
@@ -31,11 +32,17 @@ class ServicesScreen extends ConsumerWidget {
     final state = ref.watch(serviceProvider(line.id));
 
     return Scaffold(
-      appBar: AppBar(title: Text('Kurs — linia ${line.number} (${line.z})')),
+      appBar: AppBar(
+        title: Text('Kurs — linia ${line.number} (${line.z})'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/lines'),
+        ),
+      ),
       body: Row(
         children: [
           SizedBox(
-            width: 320,
+            width: 240,
             child: StopsPanel(
               stops: state.stops,
               onAdd: () => _showAddStopDialog(context, ref, line.id),
