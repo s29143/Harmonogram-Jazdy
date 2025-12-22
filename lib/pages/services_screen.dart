@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:harmonogram/components/stops_panel.dart';
 import 'package:harmonogram/components/stops_schedule_grid.dart';
-
 import 'package:harmonogram/models/bus_line.dart';
 import 'package:harmonogram/notifiers/service_notifier.dart';
 import 'package:harmonogram/pages/lines_screen.dart';
+
+final serviceProvider =
+    NotifierProvider.family<ServiceNotifier, ServiceState, String>(
+      ServiceNotifier.new,
+    );
 
 class ServicesScreen extends ConsumerWidget {
   const ServicesScreen({super.key});
@@ -67,8 +71,6 @@ class ServicesScreen extends ConsumerWidget {
     final ctrl = TextEditingController(
       text: current != null ? current.toString() : '',
     );
-
-    debugPrint('Current minutes: $current');
 
     final ok = await showDialog<bool>(
       context: context,

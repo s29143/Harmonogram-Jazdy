@@ -1,14 +1,15 @@
-import 'package:flutter_riverpod/legacy.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:harmonogram/models/bus_line.dart';
-import 'package:harmonogram/models/lines_store.dart';
+import 'package:harmonogram/pages/lines_screen.dart';
+import 'package:harmonogram/stores/lines_store.dart';
 
-class LinesNotifier extends StateNotifier<List<BusLine>> {
-  final LinesStore store;
+class LinesNotifier extends Notifier<List<BusLine>> {
+  late final LinesStore store;
 
-  LinesNotifier(this.store) : super(const []);
-
-  void init() {
-    state = store.loadLines();
+  @override
+  List<BusLine> build() {
+    store = ref.read(linesStoreProvider);
+    return store.loadLines();
   }
 
   List<BusLine> byZ(String z) =>

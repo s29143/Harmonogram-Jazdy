@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
 import 'package:harmonogram/main.dart';
 import 'package:go_router/go_router.dart';
-import 'package:harmonogram/models/lines_store.dart';
+import 'package:harmonogram/pages/home_screen.dart';
+import 'package:harmonogram/stores/lines_store.dart';
 import 'package:harmonogram/models/bus_line.dart';
 import 'package:harmonogram/notifiers/lines_notifier.dart';
 
@@ -12,12 +12,9 @@ final linesStoreProvider = Provider<LinesStore>((ref) {
   return LinesStore(prefs);
 });
 
-final linesProvider = StateNotifierProvider<LinesNotifier, List<BusLine>>((
-  ref,
-) {
-  final store = ref.read(linesStoreProvider);
-  return LinesNotifier(store)..init();
-});
+final linesProvider = NotifierProvider<LinesNotifier, List<BusLine>>(
+  LinesNotifier.new,
+);
 
 class LinesScreen extends ConsumerWidget {
   const LinesScreen({super.key});

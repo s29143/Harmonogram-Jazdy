@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:harmonogram/components/z_button.dart';
-import 'package:harmonogram/main.dart';
+import 'package:harmonogram/notifiers/z_notifier.dart';
+
+final selectedZProvider = NotifierProvider<ZNotifier, String?>(ZNotifier.new);
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -21,7 +23,7 @@ class HomeScreen extends ConsumerWidget {
               label: 'Z1',
               selected: selected == 'Z1',
               onTap: () {
-                ref.read(selectedZProvider.notifier).select('Z1');
+                ref.read(selectedZProvider.notifier).setZ('Z1');
                 context.go('/lines');
               },
             ),
@@ -30,7 +32,7 @@ class HomeScreen extends ConsumerWidget {
               label: 'Z3',
               selected: selected == 'Z3',
               onTap: () {
-                ref.read(selectedZProvider.notifier).select('Z3');
+                ref.read(selectedZProvider.notifier).setZ('Z3');
                 context.go('/lines');
               },
             ),

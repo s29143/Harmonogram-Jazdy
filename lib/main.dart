@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
 import 'package:go_router/go_router.dart';
-import 'package:harmonogram/notifiers/z_notifier.dart';
 import 'package:harmonogram/pages/home_screen.dart';
 import 'package:harmonogram/pages/lines_screen.dart';
 import 'package:harmonogram/pages/services_screen.dart';
@@ -49,7 +47,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-
-final selectedZProvider = StateNotifierProvider<ZNotifier, String?>(
-  (ref) => ZNotifier(ref.read(sharedPreferencesProvider)),
-);

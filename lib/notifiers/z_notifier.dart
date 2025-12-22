@@ -1,14 +1,24 @@
-import 'package:flutter_riverpod/legacy.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:harmonogram/main.dart';
 
-class ZNotifier extends StateNotifier<String?> {
+class ZNotifier extends Notifier<String?> {
   static const _key = 'selected_z';
-  final SharedPreferences prefs;
 
-  ZNotifier(this.prefs) : super(prefs.getString(_key));
+  @override
+  String? build() {
+    final prefs = ref.read(sharedPreferencesProvider);
+    return prefs.getString(_key);
+  }
 
-  void select(String z) {
+  Future<void> setZ(String z) async {
     state = z;
-    prefs.setString(_key, z);
+    final prefs = ref.read(sharedPreferencesProvider);
+    await prefs.setString(_key, z);
+  }
+
+  Future<void> clear() async {
+    state = null;
+    final prefs = ref.read(sharedPreferencesProvider);
+    await prefs.remove(_key);
   }
 }
