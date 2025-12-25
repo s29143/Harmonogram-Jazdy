@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:harmonogram/components/cell.dart';
 import 'package:harmonogram/models/bus_line.dart';
+import 'package:harmonogram/models/day_type.dart';
+import 'package:harmonogram/models/service_key.dart';
 import 'package:harmonogram/models/stop.dart';
+import 'package:harmonogram/notifiers/day_type_notifier.dart';
 import 'package:harmonogram/pages/lines_screen.dart';
 import 'package:harmonogram/pages/services_screen.dart';
 
@@ -76,7 +79,9 @@ class _StopsScheduleGridState extends ConsumerState<StopsScheduleGrid> {
     final gridWidth = hours.length * StopsScheduleGrid.cellWidth;
     final totalWidth = StopsScheduleGrid.stopNameWidth + gridWidth;
     final linesNotifier = ref.read(linesProvider.notifier);
+    final dayTypeProvider = ref.read(selectedDayTypeProvider.notifier);
     final BusLine line = linesNotifier.selectedLine!;
+    final DayType dayType = dayTypeProvider.dayType;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -188,8 +193,11 @@ class _StopsScheduleGridState extends ConsumerState<StopsScheduleGrid> {
                                   ? IconButton(
                                       icon: const Icon(Icons.add),
                                       tooltip: 'Dodaj przystanek',
-                                      onPressed: () =>
-                                          _showAddStopDialog(context, line.id),
+                                      onPressed: () => _showAddStopDialog(
+                                        context,
+                                        line.id,
+                                        dayType,
+                                      ),
                                     )
                                   : const SizedBox.shrink(),
                             ],
@@ -240,7 +248,10 @@ class _StopsScheduleGridState extends ConsumerState<StopsScheduleGrid> {
                                                   onPressed: () => ref
                                                       .read(
                                                         serviceProvider(
-                                                          line.id,
+                                                          ServiceKey(
+                                                            line.id,
+                                                            dayType,
+                                                          ),
                                                         ).notifier,
                                                       )
                                                       .removeStop(stop.id),
@@ -294,7 +305,11 @@ class _StopsScheduleGridState extends ConsumerState<StopsScheduleGrid> {
     );
   }
 
-  Future<void> _showAddStopDialog(BuildContext context, String lineId) async {
+  Future<void> _showAddStopDialog(
+    BuildContext context,
+    String lineId,
+    DayType dayType,
+  ) async {
     final ctrl = TextEditingController();
 
     final ok = await showDialog<bool>(
@@ -327,6 +342,8 @@ class _StopsScheduleGridState extends ConsumerState<StopsScheduleGrid> {
     final name = ctrl.text.trim();
     if (name.isEmpty) return;
 
-    await ref.read(serviceProvider(lineId).notifier).addStop(name);
+    await ref
+        .read(serviceProvider(ServiceKey(lineId, dayType)).notifier)
+        .addStop(name);
   }
 }

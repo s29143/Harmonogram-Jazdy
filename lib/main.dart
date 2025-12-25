@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:harmonogram/pages/home_screen.dart';
+import 'package:harmonogram/pages/day_type_screen.dart';
+import 'package:harmonogram/pages/z_screen.dart';
 import 'package:harmonogram/pages/lines_screen.dart';
 import 'package:harmonogram/pages/services_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -25,7 +26,8 @@ final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
 
 final _router = GoRouter(
   routes: [
-    GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
+    GoRoute(path: '/', builder: (context, state) => const DayTypeScreen()),
+    GoRoute(path: '/z', builder: (context, state) => const ZScreen()),
     GoRoute(path: '/lines', builder: (context, state) => const LinesScreen()),
     GoRoute(
       path: '/services',

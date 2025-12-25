@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:harmonogram/components/now_bar.dart';
+import 'package:harmonogram/models/day_type.dart';
 import 'package:harmonogram/models/next_stop_time.dart';
+import 'package:harmonogram/models/service_key.dart';
+import 'package:harmonogram/notifiers/day_type_notifier.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'package:harmonogram/components/stops_schedule_grid.dart';
@@ -13,7 +16,7 @@ import 'package:harmonogram/notifiers/service_notifier.dart';
 import 'package:harmonogram/pages/lines_screen.dart';
 
 final serviceProvider =
-    NotifierProvider.family<ServiceNotifier, ServiceState, String>(
+    NotifierProvider.family<ServiceNotifier, ServiceState, ServiceKey>(
       ServiceNotifier.new,
     );
 
@@ -46,7 +49,9 @@ class _ServicesScreenState extends ConsumerState<ServicesScreen> {
   @override
   Widget build(BuildContext context) {
     final linesNotifier = ref.read(linesProvider.notifier);
+    final dayTypeNotifier = ref.read(selectedDayTypeProvider.notifier);
     final BusLine? line = linesNotifier.selectedLine;
+    final DayType dayType = dayTypeNotifier.dayType;
 
     if (line == null) {
       return Scaffold(
@@ -57,7 +62,7 @@ class _ServicesScreenState extends ConsumerState<ServicesScreen> {
       );
     }
 
-    final state = ref.watch(serviceProvider(line.id));
+    final state = ref.watch(serviceProvider(ServiceKey(line.id, dayType)));
     final next = NextStopTime.findNext(_now, state.minutesByStop);
 
     return Scaffold(
@@ -99,7 +104,14 @@ class _ServicesScreenState extends ConsumerState<ServicesScreen> {
                     minutesByStop: state.minutesByStop,
                     onEditCell: (stopId, hour) {
                       final current = state.minutesByStop[stopId]?[hour];
-                      _editCellDialog(context, line.id, stopId, hour, current);
+                      _editCellDialog(
+                        context,
+                        line.id,
+                        dayType,
+                        stopId,
+                        hour,
+                        current,
+                      );
                     },
                   ),
                 ),
@@ -114,6 +126,7 @@ class _ServicesScreenState extends ConsumerState<ServicesScreen> {
   Future<void> _editCellDialog(
     BuildContext context,
     String lineId,
+    DayType dayType,
     String stopId,
     int hour,
     int? current,
@@ -162,7 +175,7 @@ class _ServicesScreenState extends ConsumerState<ServicesScreen> {
     }
 
     await ref
-        .read(serviceProvider(lineId).notifier)
+        .read(serviceProvider(ServiceKey(lineId, dayType)).notifier)
         .setMinutes(stopId, hour, minute);
   }
 }

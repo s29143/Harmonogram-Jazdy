@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:harmonogram/main.dart';
+import 'package:harmonogram/models/service_key.dart';
 import 'package:harmonogram/models/stop.dart';
 import 'package:harmonogram/stores/services_store.dart';
 
@@ -65,57 +66,96 @@ final servicesStoreProvider = Provider<ServicesStore>((ref) {
 });
 
 class ServiceNotifier extends Notifier<ServiceState> {
-  ServiceNotifier(this.lineId);
-  final String lineId;
+  ServiceNotifier(this.serviceKey);
+  final ServiceKey serviceKey;
 
   @override
   ServiceState build() {
     final store = ref.read(servicesStoreProvider);
-    final raw = store.loadRaw(lineId);
-    if (raw != null) return ServiceState.fromJson(raw);
 
-    return ServiceState.initial();
+    final stops = store.loadStops(serviceKey.lineId);
+
+    var minutesByStop = store.loadMinutes(
+      serviceKey.lineId,
+      serviceKey.dayType,
+    );
+
+    minutesByStop = _normalizeMinutesForStops(stops, minutesByStop);
+
+    return ServiceState(stops: stops, minutesByStop: minutesByStop);
   }
 
   Map<int, int?> _emptyHours() {
     final map = <int, int?>{};
-    for (var h = 4; h <= 23; h++) {
+    for (var h = 3; h <= 23; h++) {
       map[h] = null;
     }
     return map;
   }
 
-  Future<void> _persist() async {
+  Map<String, Map<int, int?>> _normalizeMinutesForStops(
+    List<Stop> stops,
+    Map<String, Map<int, int?>> minutesByStop,
+  ) {
+    final next = Map<String, Map<int, int?>>.from(minutesByStop);
+
+    for (final s in stops) {
+      next[s.id] = Map<int, int?>.from(next[s.id] ?? _emptyHours());
+
+      for (var h = 3; h <= 23; h++) {
+        next[s.id]!.putIfAbsent(h, () => null);
+      }
+    }
+
+    final stopIds = stops.map((e) => e.id).toSet();
+    next.removeWhere((stopId, _) => !stopIds.contains(stopId));
+
+    return next;
+  }
+
+  Future<void> _persistStops() async {
     final store = ref.read(servicesStoreProvider);
-    await store.saveRaw(lineId, state.toJson());
+    await store.saveStops(serviceKey.lineId, state.stops);
+  }
+
+  Future<void> _persistMinutes() async {
+    final store = ref.read(servicesStoreProvider);
+    await store.saveMinutes(
+      serviceKey.lineId,
+      serviceKey.dayType,
+      state.minutesByStop,
+    );
   }
 
   Future<void> addStop(String name) async {
     final id = DateTime.now().microsecondsSinceEpoch.toString();
     final stop = Stop(id: id, name: name);
 
-    final nextMap = Map<String, Map<int, int?>>.from(state.minutesByStop);
-    nextMap[stop.id] = _emptyHours();
+    final nextStops = [...state.stops, stop];
 
-    state = state.copyWith(
-      stops: [...state.stops, stop],
-      minutesByStop: nextMap,
-    );
+    final nextMinutes = Map<String, Map<int, int?>>.from(state.minutesByStop);
+    nextMinutes[stop.id] = _emptyHours();
 
-    await _persist();
+    state = state.copyWith(stops: nextStops, minutesByStop: nextMinutes);
+
+    await _persistStops();
+    await _persistMinutes();
   }
 
   Future<void> removeStop(String stopId) async {
     final nextStops = state.stops.where((s) => s.id != stopId).toList();
-    final nextMap = Map<String, Map<int, int?>>.from(state.minutesByStop)
+
+    final nextMinutes = Map<String, Map<int, int?>>.from(state.minutesByStop)
       ..remove(stopId);
 
-    state = state.copyWith(stops: nextStops, minutesByStop: nextMap);
-    await _persist();
+    state = state.copyWith(stops: nextStops, minutesByStop: nextMinutes);
+
+    await _persistStops();
+    await _persistMinutes();
   }
 
   Future<void> setMinutes(String stopId, int hour, int? minutes) async {
-    if (hour < 4 || hour > 23) return;
+    if (hour < 3 || hour > 23) return;
     if (minutes != null && (minutes < 0 || minutes > 59)) return;
 
     final nextMap = Map<String, Map<int, int?>>.from(state.minutesByStop);
@@ -125,6 +165,6 @@ class ServiceNotifier extends Notifier<ServiceState> {
     nextMap[stopId] = stopHours;
 
     state = state.copyWith(minutesByStop: nextMap);
-    await _persist();
+    await _persistMinutes();
   }
 }

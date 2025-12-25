@@ -6,15 +6,21 @@ import 'package:harmonogram/notifiers/z_notifier.dart';
 
 final selectedZProvider = NotifierProvider<ZNotifier, String?>(ZNotifier.new);
 
-class HomeScreen extends ConsumerWidget {
-  const HomeScreen({super.key});
+class ZScreen extends ConsumerWidget {
+  const ZScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selected = ref.watch(selectedZProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Wybierz zetkę')),
+      appBar: AppBar(
+        title: const Text('Wybierz zetkę'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/'),
+        ),
+      ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
